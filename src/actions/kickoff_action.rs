@@ -1,5 +1,5 @@
 
-use rlbot_lib::rlbot::Physics;
+use rlbot_lib::rlbot::{Physics, ControllerState};
 
 use super::action::{Action, ActionResult};
 
@@ -23,13 +23,15 @@ impl BasicKickoffAction {
 // This is blocked on basic drive and flip actions
 impl Action for BasicKickoffAction {
     fn step(&self, dt: f32) -> ActionResult {
+        let controller = ControllerState::default();
         if let Some(car) = self.car {
             if self.phase == 1 {
                 let speed_threshold = if car.location.unwrap().x.abs() < 100. { 1550 } else { 1400 };
                 // if car.velocity.unwrap() norm(car.velocity) > speed_threshold:
                 //     self.phase = 2
                 //     self.action = AirDodge(car, 0.1, car.position + car.velocity)
-                return ActionResult::InProgress
+                // TODO: more controller
+                return ActionResult::InProgress(controller)
             }
             //
             // if self.phase == 2:
@@ -52,7 +54,7 @@ impl Action for BasicKickoffAction {
             //
             //             super().step(dt)
         }
-        return ActionResult::InProgress
+        return ActionResult::InProgress(controller)
     }
 
     fn render(&self) {}

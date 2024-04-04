@@ -4,10 +4,13 @@ mod kickoff_action;
 mod drive_action;
 
 pub mod action {
+    use rlbot_lib::rlbot::ControllerState;
+
+
     pub enum ActionResult {
         Success,
         Failed,
-        InProgress,
+        InProgress(ControllerState),
     }
 
     pub trait Action {
