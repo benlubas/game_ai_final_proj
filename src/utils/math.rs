@@ -33,8 +33,13 @@ pub mod math {
         fn dot(&self, v: &Vector3) -> f32;
         fn dist(&self, v: &Vector3) -> f32;
         fn ground(self) -> Vector3;
-        fn into_vector3(self) -> Vector3;
         fn sub(&self, v: &Vector3) -> Vector3;
+        fn add(&self, v: &Vector3) -> Vector3;
+        fn normalize(&self) -> Vector3;
+        fn norm(&self) -> f32;
+        fn x(&self) -> f32;
+        fn y(&self) -> f32;
+        fn z(&self) -> f32;
     }
 
     impl Vec3 for Vector3 {
@@ -62,16 +67,49 @@ pub mod math {
             }
         }
 
+        fn add(&self, v: &Vector3) -> Vector3 {
+            Vector3 {
+                x: self.x - v.x,
+                y: self.y - v.y,
+                z: self.z - v.z,
+            }
+        }
+
+        /// direction vector of length 1
+        fn normalize(&self) -> Vector3 {
+            let sum = self.x + self.y + self.z;
+            Vector3 {
+                x: self.x / sum,
+                y: self.y / sum,
+                z: self.z / sum,
+            }
+        }
+
+        /// length of the vector
+        fn norm(&self) -> f32 {
+            (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt()
+        }
+
         // kinda a hack to enable operator overloading
-        fn into_vector3(self) -> Vector3 {
-            self
+        fn x(&self) -> f32 {
+            self.x
+        }
+        fn z(&self) -> f32 {
+            self.z
+        }
+        fn y(&self) -> f32 {
+            self.y
         }
     }
 
     // And then this so we can also call `.into()` on them. Just for convenience
     impl Into<Vector3> for &dyn Vec3 {
         fn into(self) -> Vector3 {
-            self.into_vector3()
+            Vector3 {
+                x: self.x(),
+                y: self.y(),
+                z: self.z(),
+            }
         }
     }
 }

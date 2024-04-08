@@ -11,7 +11,7 @@ impl Arena {
         z: 2044.,
     };
 
-    pub fn clamp(pos: Vector3, offset: f32) -> Vector3 {
+    pub fn clamp(pos: &Vector3, offset: f32) -> Vector3 {
         return Vector3 {
             x: abs_clamp(pos.x, Arena::SIZE.x - offset),
             y: abs_clamp(pos.y, Arena::SIZE.y - offset),
