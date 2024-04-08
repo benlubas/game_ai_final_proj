@@ -1,5 +1,7 @@
 /// This is where I plan to keep all the math, including vector operations I guess
 pub mod math {
+    use std::f32::consts::PI;
+
     use rlbot_lib::rlbot::{Rotator, Vector3};
 
     pub fn abs_clamp(n: f32, limit: f32) -> f32 {
@@ -9,24 +11,77 @@ pub mod math {
         n
     }
 
-    /// Convert a rotator to a forward vector
-    /// https://stackoverflow.com/questions/1568568/how-to-convert-euler-angles-to-directional-vector
-    pub fn forward_vec(rotator: &Rotator) -> Vector3 {
-        Vector3 {
-            x: rotator.yaw.cos() * rotator.pitch.cos(),
-            y: rotator.yaw.sin() * rotator.pitch.cos(),
-            z: rotator.pitch.sin(),
-        }
+    // don't ask me why this works. I don't know
+    pub fn rotate(
+        axis: &nalgebra::Unit<
+            nalgebra::Matrix<
+                f32,
+                nalgebra::Const<3>,
+                nalgebra::Const<1>,
+                nalgebra::ArrayStorage<f32, 3, 1>,
+            >,
+        >,
+        rotr: nalgebra::Rotation<f32, 3>,
+        rotp: nalgebra::Rotation<f32, 3>,
+        roty: nalgebra::Rotation<f32, 3>,
+    ) -> nalgebra::Vector3<f32> {
+        // let axis = &nalgebra::Vector3::y_axis();
+        let axis = rotr.inverse_transform_unit_vector(&axis);
+        let axis = rotp.inverse_transform_unit_vector(&axis);
+        let axis = roty.inverse_transform_unit_vector(&axis);
+        *axis
     }
 
-    /// convert a rotator to an up vector
-    /// taken from wiki https://en.wikipedia.org/wiki/Rotation_matrix -> general 3d rotations
-    pub fn up_vec(r: &Rotator) -> Vector3 {
-        Vector3 {
-            x: r.roll.sin() * r.pitch.sin() * r.yaw.cos() - r.roll.cos() * r.yaw.sin(),
-            y: r.roll.sin() * r.pitch.sin() * r.yaw.sin() + r.roll.cos() * r.yaw.cos(),
-            z: r.roll.sin() * r.pitch.cos(),
-        }
+    pub fn forward_vec(rotator: &Rotator) -> Vector3 {
+        let rotr = nalgebra::Rotation::from_euler_angles(0., rotator.roll, 0.);
+        let rotp = nalgebra::Rotation::from_euler_angles(-rotator.pitch, 0., 0.);
+        let roty = nalgebra::Rotation::from_euler_angles(0., 0., -rotator.yaw + PI / 2.);
+
+        Vector3::from_nalg(rotate(&nalgebra::Vector3::y_axis(), rotr, rotp, roty))
+    }
+
+    pub fn up_vec(rotator: &Rotator) -> Vector3 {
+        let rotr = nalgebra::Rotation::from_euler_angles(0., rotator.roll, 0.);
+        let rotp = nalgebra::Rotation::from_euler_angles(-rotator.pitch, 0., 0.);
+        let roty = nalgebra::Rotation::from_euler_angles(0., 0., -rotator.yaw + PI / 2.);
+
+        Vector3::from_nalg(rotate(&nalgebra::Vector3::z_axis(), rotr, rotp, roty))
+    }
+
+    pub fn left_vec(rotator: &Rotator) -> Vector3 {
+        let rotr = nalgebra::Rotation::from_euler_angles(0., rotator.roll, 0.);
+        let rotp = nalgebra::Rotation::from_euler_angles(-rotator.pitch, 0., 0.);
+        let roty = nalgebra::Rotation::from_euler_angles(0., 0., -rotator.yaw + PI / 2.);
+
+        Vector3::from_nalg(rotate(&nalgebra::Vector3::x_axis(), rotr, rotp, roty))
+    }
+
+    pub fn dir_vecs(rotator: &Rotator) -> Vec<Vector3> {
+        let rotr = nalgebra::Rotation::from_euler_angles(0., rotator.roll, 0.);
+        let rotp = nalgebra::Rotation::from_euler_angles(-rotator.pitch, 0., 0.);
+        let roty = nalgebra::Rotation::from_euler_angles(0., 0., -rotator.yaw + PI / 2.);
+
+        let forward = rotate(&nalgebra::Vector3::y_axis(), rotr, rotp, roty);
+        let left = rotate(&nalgebra::Vector3::x_axis(), rotr, rotp, roty);
+        let up = rotate(&nalgebra::Vector3::z_axis(), rotr, rotp, roty);
+
+        vec![
+            Vector3 {
+                x: forward.x,
+                y: forward.y,
+                z: forward.z,
+            },
+            Vector3 {
+                x: up.x,
+                y: up.y,
+                z: up.z,
+            },
+            Vector3 {
+                x: left.x,
+                y: left.y,
+                z: left.z,
+            },
+        ]
     }
 
     pub trait Vec3 {
@@ -35,11 +90,13 @@ pub mod math {
         fn ground(self) -> Vector3;
         fn sub(&self, v: &Vector3) -> Vector3;
         fn add(&self, v: &Vector3) -> Vector3;
+        fn scale(&self, s: f32) -> Vector3;
         fn normalize(&self) -> Vector3;
         fn norm(&self) -> f32;
         fn x(&self) -> f32;
         fn y(&self) -> f32;
         fn z(&self) -> f32;
+        fn from_nalg(v: nalgebra::Vector3<f32>) -> Vector3;
     }
 
     impl Vec3 for Vector3 {
@@ -69,9 +126,17 @@ pub mod math {
 
         fn add(&self, v: &Vector3) -> Vector3 {
             Vector3 {
-                x: self.x - v.x,
-                y: self.y - v.y,
-                z: self.z - v.z,
+                x: self.x + v.x,
+                y: self.y + v.y,
+                z: self.z + v.z,
+            }
+        }
+
+        fn scale(&self, s: f32) -> Vector3 {
+            Vector3 {
+                x: self.x * s,
+                y: self.y * s,
+                z: self.z * s,
             }
         }
 
@@ -100,15 +165,12 @@ pub mod math {
         fn y(&self) -> f32 {
             self.y
         }
-    }
 
-    // And then this so we can also call `.into()` on them. Just for convenience
-    impl Into<Vector3> for &dyn Vec3 {
-        fn into(self) -> Vector3 {
+        fn from_nalg(v: nalgebra::Vector3<f32>) -> Vector3 {
             Vector3 {
-                x: self.x(),
-                y: self.y(),
-                z: self.z(),
+                x: v.x,
+                y: v.y,
+                z: v.z,
             }
         }
     }

@@ -34,6 +34,7 @@ pub fn start_match() -> MatchSettings {
         })),
         existingMatchBehavior: ExistingMatchBehavior::Restart,
         enableRendering: true,
+        instantStart: true,
         ..Default::default()
     }
 }

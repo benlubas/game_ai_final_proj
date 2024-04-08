@@ -1,6 +1,6 @@
 pub mod strategy {
 
-    use rlbot_lib::rlbot::{BallInfo, GameTickPacket};
+    use rlbot_lib::rlbot::GameTickPacket;
 
     use crate::actions::{
         action::Action, drive_action::DriveAction, kickoff_action::BasicKickoffAction,

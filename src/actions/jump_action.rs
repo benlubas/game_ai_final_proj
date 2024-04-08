@@ -26,7 +26,9 @@
 //
 //         return self.finished
 
-use rlbot_lib::rlbot::{GameTickPacket, ControllerState};
+use rlbot_lib::rlbot::{GameTickPacket, ControllerState, RenderMessage};
+
+use crate::utils::ActionTickResult;
 
 use super::action::{Action, ActionResult};
 
@@ -47,7 +49,7 @@ impl JumpAction {
 }
 
 impl Action for JumpAction {
-    fn step(&mut self, tick_packet: GameTickPacket, controller: ControllerState, dt: f32) -> super::action::ActionResult {
+    fn step(&mut self, _tick_packet: GameTickPacket, controller: ControllerState, dt: f32) -> super::action::ActionResult {
         let jump = self.timer < self.duration;
         if !jump {
             self.counter += 1;
@@ -57,14 +59,15 @@ impl Action for JumpAction {
         if self.counter >= 2 {
             return ActionResult::Success
         } else {
-            return ActionResult::InProgress(ControllerState {
+            return ActionResult::InProgress(ActionTickResult::from(ControllerState {
                 jump,
                 ..controller
-            })
+            }))
         }
     }
 
-    fn render(&self) {
+    fn render(&self) -> Vec<RenderMessage> {
+        vec![]
     }
 
     fn interruptible(&self) -> bool {

@@ -1,8 +1,8 @@
-use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Physics, Vector3};
+use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Vector3, RenderMessage};
 
 use crate::{utils::{
     arena::Arena,
-    math::math::{abs_clamp, forward_vec, up_vec, Vec3},
+    math::math::{abs_clamp, forward_vec, up_vec, Vec3}, ActionTickResult,
 }, DEFAULT_CAR_ID};
 
 use super::action::{Action, ActionResult};
@@ -127,11 +127,11 @@ impl Action for DriveAction {
             return ActionResult::Success;
         }
 
-        return ActionResult::InProgress(controller);
+        return ActionResult::InProgress(ActionTickResult::from(controller));
     }
 
-    fn render(&self) {
-        return;
+    fn render(&self) -> Vec<RenderMessage> {
+        vec![]
     }
 
     fn interruptible(&self) -> bool {

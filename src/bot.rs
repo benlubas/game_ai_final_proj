@@ -4,10 +4,15 @@
 /// This file should *not* contain any code that deals with the connection
 
 pub mod bot {
-    use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Physics, PlayerInput};
+    use rlbot_lib::rlbot::{
+        Color, ControllerState, GameTickPacket, Physics, PlayerInput, RenderMessage, RenderType,
+        Vector3,
+    };
 
     use crate::actions::action::{Action, ActionResult};
     use crate::solo_strategy::strategy::SoloStrategy;
+    use crate::utils::math::math::{dir_vecs, forward_vec, Vec3};
+    use crate::utils::AgentTickResult;
 
     pub struct Agent {
         // pub player_config: PlayerConfiguration, // I'm not sure what this is used for
@@ -41,14 +46,14 @@ pub mod bot {
             }
         }
 
-        pub fn handle_game_tick(&mut self, packet: GameTickPacket) -> PlayerInput {
+        pub fn handle_game_tick(&mut self, packet: GameTickPacket) -> AgentTickResult {
             // Ignore the first 20 ticks
             if self.tick_count < 20 {
                 self.tick_count += 1;
-                return PlayerInput {
+                return AgentTickResult::from(PlayerInput {
                     playerIndex: self.car_id as i32,
                     controllerState: Some(Box::new(ControllerState::default())),
-                };
+                });
             };
 
             let ball = packet.clone().ball.unwrap();
@@ -57,7 +62,7 @@ pub mod bot {
             let car = tmp.get(self.car_id).expect("There is no game.");
             let _boost = car.boost;
             self.phys = car.physics.clone();
-            let _car_phys = car.physics.clone().unwrap();
+            let car_phys = car.physics.clone().unwrap();
             let seconds_elapsed = packet.gameInfo.clone().unwrap().secondsElapsed;
             let dt = seconds_elapsed - self.last_tick_time;
             self.last_tick_time = seconds_elapsed;
@@ -105,24 +110,99 @@ pub mod bot {
                 }
             }
 
+            let vecs = dir_vecs(&car_phys.rotation.clone().unwrap());
+            let car_loc = car_phys.location.clone().unwrap();
             let mut controller = self.current_controller.clone();
+            let mut renders: Vec<RenderMessage> = vec![
+                RenderMessage {
+                    renderType: RenderType::DrawLine3D,
+                    color: Some(Box::new(Color {
+                        a: 255,
+                        r: 0,
+                        g: 255,
+                        b: 0,
+                    })),
+                    start: Some(car_loc.clone()),
+                    end: Some(car_loc.clone().add(&vecs[0].scale(250.))),
+                    scaleX: 1,
+                    scaleY: 1,
+                    text: None,
+                    isFilled: true,
+                },
+                RenderMessage {
+                    renderType: RenderType::DrawLine3D,
+                    color: Some(Box::new(Color {
+                        a: 200,
+                        r: 0,
+                        g: 0,
+                        b: 255,
+                    })),
+                    start: Some(car_loc.clone()),
+                    end: Some(car_loc.clone().add(&vecs[1].scale(250.))),
+                    scaleX: 1,
+                    scaleY: 1,
+                    text: None,
+                    isFilled: true,
+                },
+                RenderMessage {
+                    renderType: RenderType::DrawLine3D,
+                    color: Some(Box::new(Color {
+                        a: 200,
+                        r: 255,
+                        g: 0,
+                        b: 0,
+                    })),
+                    start: Some(car_loc.clone()),
+                    end: Some(car_loc.clone().add(&vecs[2].scale(250.))),
+                    scaleX: 1,
+                    scaleY: 1,
+                    text: None,
+                    isFilled: true,
+                },
+            ];
 
             if let Some(action) = self.current_action.as_mut() {
-                if let ActionResult::InProgress(ctrlr) = action.step(packet.clone(), controller.clone(), dt) {
-                    controller = ctrlr;
+                if let ActionResult::InProgress(mut res) =
+                    action.step(packet.clone(), controller.clone(), dt)
+                {
+                    controller = res.input;
+                    renders.append(&mut res.render);
+
+                    if self.debug_rendering {
+                        renders.append(&mut action.render());
+                        renders.push(RenderMessage {
+                            renderType: RenderType::DrawString2D,
+                            color: Some(Box::new(Color {
+                                a: 255,
+                                r: 255,
+                                g: 255,
+                                b: 50,
+                            })),
+                            start: Some(Vector3 {
+                                x: 20.,
+                                y: 20.,
+                                z: 0.,
+                            }),
+                            end: None,
+                            scaleX: 1,
+                            scaleY: 1,
+                            text: Some(String::from(action.name())),
+                            isFilled: true,
+                        });
+                    }
                 } else {
                     self.current_action = None;
                 }
             }
 
-            // if self.debug_rendering {
-            //     // TODO: draw shit?
-            // }
-
             self.current_controller = controller;
-            PlayerInput {
-                playerIndex: self.car_id as i32,
-                controllerState: Some(Box::new(self.current_controller.clone())),
+
+            AgentTickResult {
+                input: PlayerInput {
+                    playerIndex: self.car_id as i32,
+                    controllerState: Some(Box::new(self.current_controller.clone())),
+                },
+                render: renders,
             }
         }
     }

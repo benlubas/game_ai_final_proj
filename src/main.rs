@@ -1,12 +1,10 @@
 use clap::Parser;
 use rlbot_lib::{
     self,
-    rlbot::{
-        ControllerState, GameTickPacket, PlayerInput, QuickChat, QuickChatSelection, ReadyMessage,
-    },
+    rlbot::{ControllerState, QuickChat, QuickChatSelection, ReadyMessage, RenderGroup},
     Packet, RLBotConnection,
 };
-use std::{env, process::exit};
+use std::env;
 
 use crate::{bot::bot::Agent, solo_strategy::strategy::SoloStrategy};
 
@@ -18,7 +16,7 @@ mod utils;
 
 const DEFAULT_CAR_ID: usize = 0;
 
-fn main() {
+fn main() -> ! {
     println!("Connecting");
 
     let args = cli::cli::Args::parse();
@@ -54,12 +52,19 @@ fn main() {
             Ok(received_packet) => {
                 match received_packet {
                     Packet::GameTickPacket(packet) => {
-                        let input = agent.handle_game_tick(packet);
+                        let res = agent.handle_game_tick(packet);
                         rlbot_connection
-                            .send_packet(Packet::PlayerInput(input))
+                            .send_packet(Packet::PlayerInput(res.input))
+                            .unwrap();
+                        rlbot_connection
+                            .send_packet(Packet::RenderGroup(RenderGroup {
+                                renderMessages: Some(res.render),
+                                id: 456, // NOTE: ~~I might need to make these unique.~~ I don't
+                            }))
                             .unwrap();
                     }
-                    Packet::PlayerInput(_) => continue, // TODO: takeover mode?
+                    // NOTE: This didn't work at all.
+                    // Packet::PlayerInput(packet) => { println!("{packet:?}"); }
                     Packet::QuickChat(packet) => {
                         if packet.quickChatSelection == QuickChatSelection::Compliments_WhatASave {
                             // WARN: ignoring a result here

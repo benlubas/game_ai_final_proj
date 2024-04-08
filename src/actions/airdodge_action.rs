@@ -1,9 +1,12 @@
-use std::f32::consts::PI;
-
-use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Vector3};
+use rlbot_lib::rlbot::{
+    Color, ControllerState, GameTickPacket, RenderMessage, RenderType, Vector3,
+};
 
 use crate::{
-    utils::math::math::{abs_clamp, forward_vec, up_vec, Vec3},
+    utils::{
+        math::math::{abs_clamp, forward_vec, Vec3},
+        ActionTickResult,
+    },
     DEFAULT_CAR_ID,
 };
 
@@ -19,6 +22,7 @@ pub struct AirDodgeAction {
     pub jump_finished: bool,
     pub counter: i32,
     pub state_timer: f32,
+    car_location: Option<Vector3>,
 }
 
 impl AirDodgeAction {
@@ -30,13 +34,19 @@ impl AirDodgeAction {
             jump_finished: false,
             counter: 0,
             state_timer: 0.,
+            car_location: None,
         }
     }
 }
 
 // This is blocked on basic drive and flip actions
 impl Action for AirDodgeAction {
-    fn step(&mut self, tick_packet: GameTickPacket, controller: ControllerState, dt: f32) -> ActionResult {
+    fn step(
+        &mut self,
+        tick_packet: GameTickPacket,
+        controller: ControllerState,
+        dt: f32,
+    ) -> ActionResult {
         let car = tick_packet
             .clone()
             .players
@@ -47,6 +57,7 @@ impl Action for AirDodgeAction {
             .clone()
             .unwrap();
         let car_location = car.location.clone().unwrap();
+        self.car_location = Some(car_location.clone());
         let rotation = car.rotation.clone().unwrap();
         let velocity = car.velocity.clone().unwrap();
 
@@ -57,13 +68,13 @@ impl Action for AirDodgeAction {
         if !self.jump_finished {
             match self.jump.step(tick_packet.clone(), controller.clone(), dt) {
                 ActionResult::InProgress(ctrl) => {
-                    controller = ctrl;
+                    controller = ctrl.input;
                 }
                 _ => {
                     self.jump_finished = true;
                 }
             };
-            return ActionResult::InProgress(controller.to_owned());
+            return ActionResult::InProgress(ActionTickResult::from(controller.to_owned()));
         } else {
             if self.counter == 0 {
                 if self.target.is_none() {
@@ -81,7 +92,8 @@ impl Action for AirDodgeAction {
                     // self.controls.roll = 0
                     // self.controls.pitch = -target_direction[0]
                     controller.roll = 0.;
-                    controller.pitch = -to_target.x;
+                    controller.pitch = -1.;
+                    controller.boost = false;
 
                     // NOTE: this line is probably horribly wrong
                     controller.yaw = (to_target.x / to_target.y).atan();
@@ -110,14 +122,36 @@ impl Action for AirDodgeAction {
 
         // self.finished = self.jump.finished and self.state_timer > recovery_time and self.counter >= 6
         if self.jump_finished && self.state_timer > recovery_time && self.counter >= 6 {
+            println!("finished jump");
             return ActionResult::Success;
         }
 
-        return ActionResult::InProgress(controller.to_owned());
+        return ActionResult::InProgress(ActionTickResult::from(controller.to_owned()));
     }
 
-    fn render(&self) {
-        return;
+    fn render(&self) -> Vec<RenderMessage> {
+        if let Some(car_location) = self.car_location.clone() {
+            if let Some(target) = self.target.clone() {
+                // let to_target = car_location.sub(&target).normalize();
+
+                return vec![RenderMessage {
+                    renderType: RenderType(2),
+                    color: Some(Box::new(Color {
+                        a: 255,
+                        r: 255,
+                        g: 0,
+                        b: 0,
+                    })),
+                    start: Some(car_location.clone()),
+                    end: Some(target.clone()),
+                    scaleX: 1,
+                    scaleY: 1,
+                    text: None,
+                    isFilled: true,
+                }];
+            }
+        }
+        vec![]
     }
 
     fn interruptible(&self) -> bool {
