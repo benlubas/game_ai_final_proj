@@ -31,9 +31,8 @@ pub mod strategy {
                     drive_on_walls: false,
                 });
             }
-            Some(action)
 
-            // ball = info.ball
+            let their_goal = tick_packet.teams.unwrap().get();
             // their_goal = ground(info.their_goal.center)
             // my_goal = ground(info.my_goal.center)
             // opponents = info.get_opponents()
@@ -47,6 +46,7 @@ pub mod strategy {
             //     return kickoffs.choose_kickoff(info, my_car)
             //
             // info.predict_ball()
+            Some(action)
         }
     }
 }

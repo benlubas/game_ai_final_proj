@@ -4,6 +4,14 @@ pub mod math {
 
     use rlbot_lib::rlbot::{Rotator, Vector3};
 
+    pub fn vec_new(x: f32, y: f32, z: f32) -> Vector3 {
+        Vector3 { x, y, z }
+    }
+
+    pub fn vec2_new(x: f32, y: f32) -> Vector3 {
+        Vector3 { x, y, z: 0. }
+    }
+
     pub fn abs_clamp(n: f32, limit: f32) -> f32 {
         if n.abs() > limit {
             return limit * n.signum();
@@ -86,6 +94,7 @@ pub mod math {
 
     pub trait Vec3 {
         fn dot(&self, v: &Vector3) -> f32;
+        fn cross(&self, v: &Vector3) -> Vector3;
         fn dist(&self, v: &Vector3) -> f32;
         fn ground(self) -> Vector3;
         fn sub(&self, v: &Vector3) -> Vector3;
@@ -103,6 +112,14 @@ pub mod math {
         /// Calculate the dot product of two vectors
         fn dot(&self, v: &Vector3) -> f32 {
             self.x * v.x + self.y * v.y + self.z * v.z
+        }
+
+        fn cross(&self, v: &Vector3) -> Vector3 {
+            Vector3 {
+                x: self.y * v.z - self.z * v.y,
+                y: self.z * v.x - self.x * v.z,
+                z: self.x * v.y - self.y * v.x,
+            }
         }
 
         /// Calculate the distance from this vector to another

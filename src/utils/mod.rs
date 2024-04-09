@@ -3,6 +3,7 @@ use rlbot_lib::rlbot::{PlayerInput, RenderMessage, ControllerState};
 pub mod rl_match;
 pub mod arena;
 pub mod math;
+pub mod render;
 
 pub struct ActionTickResult {
     pub input: ControllerState,

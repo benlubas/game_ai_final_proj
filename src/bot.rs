@@ -11,7 +11,8 @@ pub mod bot {
 
     use crate::actions::action::{Action, ActionResult};
     use crate::solo_strategy::strategy::SoloStrategy;
-    use crate::utils::math::math::{dir_vecs, forward_vec, Vec3};
+    use crate::utils::math::math::{dir_vecs, forward_vec, vec2_new, Vec3};
+    use crate::utils::render::render::{line, text, BLUE, GREEN, RED, YELLOW};
     use crate::utils::AgentTickResult;
 
     pub struct Agent {
@@ -99,10 +100,6 @@ pub mod bot {
 
             // choose maneuver
             if self.current_action.is_none() {
-                // TODO: implement debug rendering
-                // if self.debug_rendering {
-                // }
-
                 println!("Assigning new Action");
                 self.current_action = self.strategy.choose_action(packet.clone(), is_kickoff);
                 if let Some(action) = &self.current_action {
@@ -113,52 +110,11 @@ pub mod bot {
             let vecs = dir_vecs(&car_phys.rotation.clone().unwrap());
             let car_loc = car_phys.location.clone().unwrap();
             let mut controller = self.current_controller.clone();
+            let scale = 150.;
             let mut renders: Vec<RenderMessage> = vec![
-                RenderMessage {
-                    renderType: RenderType::DrawLine3D,
-                    color: Some(Box::new(Color {
-                        a: 255,
-                        r: 0,
-                        g: 255,
-                        b: 0,
-                    })),
-                    start: Some(car_loc.clone()),
-                    end: Some(car_loc.clone().add(&vecs[0].scale(250.))),
-                    scaleX: 1,
-                    scaleY: 1,
-                    text: None,
-                    isFilled: true,
-                },
-                RenderMessage {
-                    renderType: RenderType::DrawLine3D,
-                    color: Some(Box::new(Color {
-                        a: 200,
-                        r: 0,
-                        g: 0,
-                        b: 255,
-                    })),
-                    start: Some(car_loc.clone()),
-                    end: Some(car_loc.clone().add(&vecs[1].scale(250.))),
-                    scaleX: 1,
-                    scaleY: 1,
-                    text: None,
-                    isFilled: true,
-                },
-                RenderMessage {
-                    renderType: RenderType::DrawLine3D,
-                    color: Some(Box::new(Color {
-                        a: 200,
-                        r: 255,
-                        g: 0,
-                        b: 0,
-                    })),
-                    start: Some(car_loc.clone()),
-                    end: Some(car_loc.clone().add(&vecs[2].scale(250.))),
-                    scaleX: 1,
-                    scaleY: 1,
-                    text: None,
-                    isFilled: true,
-                },
+                line(car_loc, car_loc.add(&vecs[0].scale(scale)), GREEN),
+                line(car_loc, car_loc.add(&vecs[1].scale(scale)), BLUE),
+                line(car_loc, car_loc.add(&vecs[2].scale(scale)), RED),
             ];
 
             if let Some(action) = self.current_action.as_mut() {
@@ -170,25 +126,7 @@ pub mod bot {
 
                     if self.debug_rendering {
                         renders.append(&mut action.render());
-                        renders.push(RenderMessage {
-                            renderType: RenderType::DrawString2D,
-                            color: Some(Box::new(Color {
-                                a: 255,
-                                r: 255,
-                                g: 255,
-                                b: 50,
-                            })),
-                            start: Some(Vector3 {
-                                x: 20.,
-                                y: 20.,
-                                z: 0.,
-                            }),
-                            end: None,
-                            scaleX: 1,
-                            scaleY: 1,
-                            text: Some(String::from(action.name())),
-                            isFilled: true,
-                        });
+                        renders.push(text(vec2_new(20., 20.), action.name(), YELLOW));
                     }
                 } else {
                     self.current_action = None;

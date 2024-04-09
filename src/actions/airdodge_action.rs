@@ -5,6 +5,7 @@ use rlbot_lib::rlbot::{
 use crate::{
     utils::{
         math::math::{abs_clamp, forward_vec, Vec3},
+        render::render::{line, YELLOW},
         ActionTickResult,
     },
     DEFAULT_CAR_ID,
@@ -132,23 +133,7 @@ impl Action for AirDodgeAction {
     fn render(&self) -> Vec<RenderMessage> {
         if let Some(car_location) = self.car_location.clone() {
             if let Some(target) = self.target.clone() {
-                // let to_target = car_location.sub(&target).normalize();
-
-                return vec![RenderMessage {
-                    renderType: RenderType(2),
-                    color: Some(Box::new(Color {
-                        a: 255,
-                        r: 255,
-                        g: 0,
-                        b: 0,
-                    })),
-                    start: Some(car_location.clone()),
-                    end: Some(target.clone()),
-                    scaleX: 1,
-                    scaleY: 1,
-                    text: None,
-                    isFilled: true,
-                }];
+                return vec![line(car_location, target, YELLOW)];
             }
         }
         vec![]

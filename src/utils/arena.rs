@@ -18,4 +18,26 @@ impl Arena {
             z: pos.z,
         };
     }
+
+    /// Does this position collide with the wall or the ground? if it does, return the normal of
+    /// the collision surface (roughly)
+    pub fn collide(pos: &Vector3) -> Option<Vector3> {
+        let vec = if pos.x > Arena::SIZE.x {
+            Vector3 { x: 1., y: 0., z: 0. }
+        } else if pos.x < -Arena::SIZE.x {
+            Vector3 { x: -1., y: 0., z: 0. }
+        } else if pos.z > Arena::SIZE.y {
+            Vector3 { x: 0., y: 0., z: -1. }
+        } else if pos.z < 0. {
+            Vector3 { x: 0., y: 0., z: 1. }
+        } else if pos.y > Arena::SIZE.y {
+            Vector3 { x: 0., y: -1., z: 0. }
+        } else if pos.y < -Arena::SIZE.y {
+            Vector3 { x: 0., y: 1., z: 0. }
+        } else {
+            return None;
+        };
+
+        Some(vec)
+    }
 }
