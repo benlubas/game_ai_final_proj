@@ -1,6 +1,4 @@
-use rlbot_lib::rlbot::{
-    Color, ControllerState, GameTickPacket, RenderMessage, RenderType, Vector3,
-};
+use rlbot_lib::rlbot::{ControllerState, GameTickPacket, RenderMessage, Vector3};
 
 use crate::{
     utils::{
@@ -69,7 +67,7 @@ impl Action for AirDodgeAction {
         if !self.jump_finished {
             match self.jump.step(tick_packet.clone(), controller.clone(), dt) {
                 ActionResult::InProgress(ctrl) => {
-                    controller = ctrl.input;
+                    controller = ctrl.controller;
                 }
                 _ => {
                     self.jump_finished = true;
@@ -133,7 +131,7 @@ impl Action for AirDodgeAction {
     fn render(&self) -> Vec<RenderMessage> {
         if let Some(car_location) = self.car_location.clone() {
             if let Some(target) = self.target.clone() {
-                return vec![line(car_location, target, YELLOW)];
+                return vec![line(&car_location, &target, YELLOW)];
             }
         }
         vec![]

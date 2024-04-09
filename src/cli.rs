@@ -10,5 +10,9 @@ pub mod cli {
         /// Create a new match
         #[arg(short, long)]
         pub start: bool,
+
+        /// Run the current test
+        #[arg(short, long)]
+        pub test: bool
     }
 }

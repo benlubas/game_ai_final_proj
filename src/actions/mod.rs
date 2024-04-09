@@ -5,6 +5,7 @@ pub mod drive_action;
 pub mod jump_action;
 pub mod kickoff_action;
 pub mod recover_action;
+pub mod reorient_action;
 
 pub mod action {
     use rlbot_lib::rlbot::{ControllerState, GameTickPacket, RenderMessage};

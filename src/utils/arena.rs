@@ -40,4 +40,16 @@ impl Arena {
 
         Some(vec)
     }
+
+    pub fn random_pos(offset: f32) -> Vector3 {
+        use rand::Rng;
+
+        let mut rng = rand::thread_rng();
+
+        Vector3 {
+            x: rng.gen_range((-Arena::SIZE.x + offset)..(Arena::SIZE.x - offset)),
+            y: rng.gen_range((-Arena::SIZE.y + offset)..(Arena::SIZE.y - offset)),
+            z: rng.gen_range(offset..(Arena::SIZE.z - offset)),
+        }
+    }
 }

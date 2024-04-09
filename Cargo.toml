@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.2", features = ["derive"] }
 nalgebra = "0.32.4"
+rand = "0.8.5"
 rlbot-lib = { path = "../rl-bot-rust-interface/lib" }

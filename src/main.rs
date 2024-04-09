@@ -1,17 +1,20 @@
 use clap::Parser;
 use rlbot_lib::{
     self,
-    rlbot::{ControllerState, QuickChat, QuickChatSelection, ReadyMessage, RenderGroup},
+    rlbot::{QuickChat, QuickChatSelection, ReadyMessage, RenderGroup},
     Packet, RLBotConnection,
 };
 use std::env;
 
-use crate::{bot::bot::Agent, solo_strategy::strategy::SoloStrategy};
+use crate::{
+    bot::bot::Agent,
+    strategies::{solo_strategy::SoloStrategy, test_strategy::TestStrategy},
+};
 
 mod actions;
 mod bot;
 mod cli;
-mod solo_strategy;
+mod strategies;
 mod utils;
 
 const DEFAULT_CAR_ID: usize = 0;
@@ -34,8 +37,8 @@ fn main() -> ! {
 
     rlbot_connection
         .send_packet(Packet::ReadyMessage(ReadyMessage {
-            wantsBallPredictions: false,
-            wantsQuickChat: false,
+            wantsBallPredictions: true,
+            wantsQuickChat: true,
             wantsGameMessages: true,
         }))
         .unwrap();
@@ -45,14 +48,27 @@ fn main() -> ! {
         .unwrap_or(DEFAULT_CAR_ID);
 
     println!("Creating Agent");
-    let mut agent = Agent::new(true, car_id, SoloStrategy {});
+    let mut agent: Agent;
+    // if args.test {
+    //     agent = Agent::new(true, car_id, TestStrategy {});
+    // } else {
+        agent = Agent::new(true, car_id, SoloStrategy {});
+    // }
 
+    // // setup the game according to the strategy
+    // if let Some(state) = agent.strategy.set_game_state() {
+    //     rlbot_connection
+    //         .send_packet(Packet::DesiredGameState(state))
+    //         .unwrap();
+    // }
     loop {
         match rlbot_connection.recv_packet() {
             Ok(received_packet) => {
                 match received_packet {
                     Packet::GameTickPacket(packet) => {
                         let res = agent.handle_game_tick(packet);
+                        println!("{:?}", res.input);
+                        println!("{:?}", res.render);
                         rlbot_connection
                             .send_packet(Packet::PlayerInput(res.input))
                             .unwrap();
@@ -63,8 +79,6 @@ fn main() -> ! {
                             }))
                             .unwrap();
                     }
-                    // NOTE: This didn't work at all.
-                    // Packet::PlayerInput(packet) => { println!("{packet:?}"); }
                     Packet::QuickChat(packet) => {
                         if packet.quickChatSelection == QuickChatSelection::Compliments_WhatASave {
                             // WARN: ignoring a result here
@@ -78,7 +92,9 @@ fn main() -> ! {
                         // println!("Ball Prediction Packet:\n{packet:?}");
                     }
                     // Packet::ReadyMessage(_) => todo!(),
-                    // Packet::MessagePacket(_) => todo!(),
+                    // Packet::MessagePacket(packet) => {
+                    //     println!("{packet:?}");
+                    // }
                     // Packet::FieldInfo(_) => continue,
                     // Packet::MatchSettings(_) => continue,
                     // Packet::DesiredGameState(_) => continue,
@@ -86,7 +102,7 @@ fn main() -> ! {
                     _ => continue,
                 };
             }
-            Err(e) => println!("packet error:\n{e:?}"),
+            Err(_e) => {} // println!("packet error:\n{e:?}"),
         };
     }
 }

@@ -1,11 +1,18 @@
-use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Vector3, RenderMessage, Physics, Rotator};
+use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Physics, RenderMessage, Vector3};
 
-use crate::{utils::{
-    arena::Arena,
-    math::math::{abs_clamp, forward_vec, up_vec, Vec3}, ActionTickResult,
-}, DEFAULT_CAR_ID};
+use crate::{
+    utils::{
+        arena::Arena,
+        math::math::{up_vec, Vec3},
+        ActionTickResult, render::render::{cross, YELLOW},
+    },
+    DEFAULT_CAR_ID,
+};
 
-use super::action::{Action, ActionResult};
+use super::{
+    action::{Action, ActionResult},
+    reorient_action::ReorientAction,
+};
 
 pub struct RecoverAction {
     // track the progress of this action, b/c this is a timed uninterruptible action
@@ -13,6 +20,7 @@ pub struct RecoverAction {
     landing_pos: Option<Vector3>,
     trajectory: Vec<Vector3>,
     landing: bool,
+    reorient: Option<ReorientAction>,
 }
 
 impl RecoverAction {
@@ -22,28 +30,33 @@ impl RecoverAction {
             landing_pos: None,
             trajectory: vec![],
             landing: false,
+            reorient: None,
         }
     }
 
     pub fn simulate_landing(&mut self, car_phys: Physics) {
         let mut car_pos = car_phys.location.unwrap();
         let mut car_vel = car_phys.velocity.unwrap();
-        let gravity = Vector3 { x: 0., y: 0., z: -650. };
+        let gravity = Vector3 {
+            x: 0.,
+            y: 0.,
+            z: -650.,
+        };
 
-        self.trajectory = vec![car_pos];
+        self.trajectory = vec![car_pos.clone()];
         self.landing = false;
         let mut collision_normal: Option<Vector3> = None;
 
         let dt = 1. / 60.;
         let simulation_duration: f32 = 0.8;
         for i in 0..((simulation_duration / dt) as i32) {
-            car_pos.add(&car_vel.scale(dt));
-            car_vel.add(&gravity.scale(dt));
+            car_pos = car_pos.add(&car_vel.scale(dt));
+            car_vel = car_vel.add(&gravity.scale(dt));
 
             if car_vel.norm() > 2300. {
                 car_vel = car_vel.normalize().scale(2300.);
             }
-            self.trajectory.push(car_pos);
+            self.trajectory.push(car_pos.clone());
             let collission_result = Arena::collide(&car_pos);
             if collission_result.is_some() {
                 collision_normal = collission_result;
@@ -57,70 +70,80 @@ impl RecoverAction {
         if self.landing {
             let u = collision_normal.unwrap();
             let f = car_vel.sub(&u.scale(car_vel.dot(&u))).normalize();
-            let l = u.cross(&f).normalize();
-        }
-        // if self.landing:
-        //     u = collision_normal
-        //     f = normalize(vel - dot(vel, u) * u)
-        //     l = normalize(cross(u, f))
-        //     self.reorient.target_orientation = three_vec3_to_mat3(f, l, u)
-        // else:
-        //     target_direction = normalize(normalize(self.car.velocity) - vec3(0, 0, 3))
-        //     self.reorient.target_orientation = look_at(target_direction, vec3(0, 0, 1))
-    }
-
-    // Okay, so trying to get the way to rotate things.
-    //
-    // I think the best bet is to match the up vector with the normal vector
-    // and then determine the yaw based on the car's velocity (like project the velocity onto the
-    // plane we land on and then match the forward vector to that by rotating in yaw).
-    pub fn controller_from_target_orientation(f: Vector3, l: Vector3, u: Vector3) -> Rotator {
-        Rotator {
-            roll: 0.,
-            pitch: 0.,
-            yaw: 0.,
+            self.reorient = Some(ReorientAction::from_uf(u, f, DEFAULT_CAR_ID));
+        } else {
+            let target_dir = car_vel
+                .normalize()
+                .sub(&Vector3 {
+                    x: 0.,
+                    y: 0.,
+                    z: 0.,
+                })
+                .normalize();
+            self.reorient = Some(ReorientAction::from_uf(
+                Vector3::up(),
+                target_dir,
+                DEFAULT_CAR_ID,
+            ));
         }
     }
 }
 
 // This is blocked on basic drive and flip actions
 impl Action for RecoverAction {
-    fn step(&mut self, tick_packet: GameTickPacket, controller: ControllerState, _dt: f32) -> ActionResult {
-        let car = tick_packet
-            .clone()
-            .players
-            .unwrap()
-            .get(DEFAULT_CAR_ID)
-            .unwrap()
-            .physics
-            .clone()
-            .unwrap();
-        let car_location = car.location.clone().unwrap();
-        let rotation = car.rotation.clone().unwrap();
-        let velocity = car.velocity.clone().unwrap();
+    fn step(
+        &mut self,
+        tick_packet: GameTickPacket,
+        controller: ControllerState,
+        dt: f32,
+    ) -> ActionResult {
+        let mut action_result = ActionTickResult::from(controller.clone());
+        let players = tick_packet.clone().players.unwrap();
+        let car = players.get(DEFAULT_CAR_ID).unwrap();
+        let car_phys = car.clone().physics.clone().unwrap();
+        // let car_location = car_phys.location.clone().unwrap();
+        let rotation = car_phys.rotation.clone().unwrap();
+        // let velocity = car_phys.velocity.clone().unwrap();
 
-        // self.simulate_landing()
-        // self.reorient.step(dt)
-        // self.controls = self.reorient.controls
-        //
+        self.simulate_landing(*car_phys.clone());
+        if let Some(reorient) = self.reorient.as_mut() {
+            match reorient.step(tick_packet.clone(), controller.clone(), dt) {
+                ActionResult::InProgress(res) => {
+                    action_result.controller = res.controller;
+                }
+                _ => {}
+            }
+        }
+
         // self.controls.boost = angle_between(self.car.forward(), vec3(0, 0, -1)) < 1.5 and not self.landing
-        // self.controls.throttle = 1  # in case we're turtling
-        //
+
+        action_result.controller.throttle = 1.; // in case we're turtling
+
         // # jump if the car is upside down and has wheel contact
-        // if (
-        //     self.jump_when_upside_down
-        //     and self.car.on_ground
-        //     and dot(self.car.up(), vec3(0, 0, 1)) < -0.95
-        // ):
-        //     self.controls.jump = True
-        //     self.landing = False
-        //     
-        // else:
-        //     self.finished = self.car.on_ground
+        if self.jump_when_upside_down
+            && car.hasWheelContact
+            && up_vec(&rotation).dot(&Vector3 {
+                x: 0.,
+                y: 0.,
+                z: 1.,
+            }) < -0.95
+        {
+            action_result.controller.jump = true;
+            self.landing = false;
+        } else if car.hasWheelContact {
+            return ActionResult::Success;
+        }
+
+        println!("recov controller: {:?}", action_result.controller);
+        ActionResult::InProgress(action_result)
     }
 
     fn render(&self) -> Vec<RenderMessage> {
-        vec![]
+        if let Some(target) = self.landing_pos.as_ref() {
+            cross(target, 100., YELLOW)
+        } else {
+            vec![]
+        }
     }
 
     fn interruptible(&self) -> bool {

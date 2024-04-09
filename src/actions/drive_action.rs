@@ -88,7 +88,7 @@ impl Action for DriveAction {
         let forward_vec = forward_vec(&rotation);
         let forward_vel = velocity.dot(&forward_vec);
 
-        println!("{forward_vel:?}");
+        // println!("{forward_vel:?}");
         // # speed controller
         if forward_vel < self.target_speed {
             println!("moving slower than target speed");

@@ -4,14 +4,11 @@
 /// This file should *not* contain any code that deals with the connection
 
 pub mod bot {
-    use rlbot_lib::rlbot::{
-        Color, ControllerState, GameTickPacket, Physics, PlayerInput, RenderMessage, RenderType,
-        Vector3,
-    };
+    use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Physics, PlayerInput, RenderMessage};
 
     use crate::actions::action::{Action, ActionResult};
-    use crate::solo_strategy::strategy::SoloStrategy;
-    use crate::utils::math::math::{dir_vecs, forward_vec, vec2_new, Vec3};
+    use crate::strategies::strategy::Strategy;
+    use crate::utils::math::math::{dir_vecs, vec2_new, Vec3};
     use crate::utils::render::render::{line, text, BLUE, GREEN, RED, YELLOW};
     use crate::utils::AgentTickResult;
 
@@ -28,12 +25,12 @@ pub mod bot {
         last_tick_time: f32,
         /// Whatever the bot is currently trying to do
         current_action: Option<Box<dyn Action>>,
-        pub strategy: SoloStrategy,
+        pub strategy: Box<dyn Strategy>,
         current_controller: ControllerState,
     }
 
     impl Agent {
-        pub fn new(debug: bool, car_id: usize, strategy: SoloStrategy) -> Agent {
+        pub fn new(debug: bool, car_id: usize, strategy: impl Strategy + 'static) -> Agent {
             Agent {
                 debug_rendering: debug,
                 phys: None,
@@ -42,7 +39,7 @@ pub mod bot {
                 tick_count: 0,
                 last_tick_time: 0.,
                 current_action: None,
-                strategy,
+                strategy: Box::new(strategy),
                 current_controller: ControllerState::default(),
             }
         }
@@ -112,21 +109,21 @@ pub mod bot {
             let mut controller = self.current_controller.clone();
             let scale = 150.;
             let mut renders: Vec<RenderMessage> = vec![
-                line(car_loc, car_loc.add(&vecs[0].scale(scale)), GREEN),
-                line(car_loc, car_loc.add(&vecs[1].scale(scale)), BLUE),
-                line(car_loc, car_loc.add(&vecs[2].scale(scale)), RED),
+                line(&car_loc, &car_loc.add(&vecs[0].scale(scale)), GREEN),
+                line(&car_loc, &car_loc.add(&vecs[1].scale(scale)), BLUE),
+                line(&car_loc, &car_loc.add(&vecs[2].scale(scale)), RED),
             ];
 
             if let Some(action) = self.current_action.as_mut() {
                 if let ActionResult::InProgress(mut res) =
                     action.step(packet.clone(), controller.clone(), dt)
                 {
-                    controller = res.input;
+                    controller = res.controller;
                     renders.append(&mut res.render);
 
                     if self.debug_rendering {
                         renders.append(&mut action.render());
-                        renders.push(text(vec2_new(20., 20.), action.name(), YELLOW));
+                        renders.push(text(&vec2_new(20., 20.), action.name(), YELLOW));
                     }
                 } else {
                     self.current_action = None;

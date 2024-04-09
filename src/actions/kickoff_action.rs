@@ -92,7 +92,7 @@ impl Action for BasicKickoffAction {
         }
         if self.phase == 2 {
             // self.action.controls.boost = self.action.state_timer < 0.1
-            action_result.input.boost = self.current_time < 0.1;
+            action_result.controller.boost = self.current_time < 0.1;
 
             // if car.on_ground and self.action.finished:
             if car.hasWheelContact
@@ -133,7 +133,7 @@ impl Action for BasicKickoffAction {
         // tick the action:
         if let Some(action) = self.action.as_mut() {
             println!("ticking action: {}", action.name());
-            match action.step(tick_packet.clone(), action_result.input.clone(), dt) {
+            match action.step(tick_packet.clone(), action_result.controller.clone(), dt) {
                 ActionResult::Success => {
                     self.action_state = Some(ActionResult::Success);
                     if self.phase == 4 {

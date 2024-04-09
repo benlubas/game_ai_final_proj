@@ -33,7 +33,6 @@ pub mod math {
         rotp: nalgebra::Rotation<f32, 3>,
         roty: nalgebra::Rotation<f32, 3>,
     ) -> nalgebra::Vector3<f32> {
-        // let axis = &nalgebra::Vector3::y_axis();
         let axis = rotr.inverse_transform_unit_vector(&axis);
         let axis = rotp.inverse_transform_unit_vector(&axis);
         let axis = roty.inverse_transform_unit_vector(&axis);
@@ -105,7 +104,13 @@ pub mod math {
         fn x(&self) -> f32;
         fn y(&self) -> f32;
         fn z(&self) -> f32;
+        fn to_nalg(&self) -> nalgebra::Vector3<f32>;
         fn from_nalg(v: nalgebra::Vector3<f32>) -> Vector3;
+        fn up() -> Vector3;
+    }
+
+    pub trait Rot3 {
+        fn to_nalg(&self) -> nalgebra::Rotation3<f32>;
     }
 
     impl Vec3 for Vector3 {
@@ -189,6 +194,24 @@ pub mod math {
                 y: v.y,
                 z: v.z,
             }
+        }
+
+        fn to_nalg(&self) -> nalgebra::Vector3<f32> {
+            nalgebra::Vector3::new(self.x, self.y, self.z)
+        }
+
+        fn up() -> Vector3 {
+            Vector3 {
+                x: 0.,
+                y: 0.,
+                z: 1.,
+            }
+        }
+    }
+
+    impl Rot3 for Rotator {
+        fn to_nalg(&self) -> nalgebra::Rotation3<f32> {
+            nalgebra::Rotation3::from_euler_angles(self.roll, self.pitch, self.yaw)
         }
     }
 }

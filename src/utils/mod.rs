@@ -6,14 +6,14 @@ pub mod math;
 pub mod render;
 
 pub struct ActionTickResult {
-    pub input: ControllerState,
+    pub controller: ControllerState,
     pub render: Vec<RenderMessage>,
 }
 
 impl ActionTickResult {
     pub fn from(input: ControllerState) -> ActionTickResult {
         ActionTickResult {
-            input,
+            controller: input,
             render: vec![],
         }
     }

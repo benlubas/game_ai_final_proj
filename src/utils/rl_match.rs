@@ -1,6 +1,6 @@
 use rlbot_lib::rlbot::{
     ExistingMatchBehavior, GameMap, GameMode, MatchLength, MatchSettings, MutatorSettings,
-    PlayerClass, PlayerConfiguration, PlayerLoadout, RLBotPlayer,
+    PlayerClass, PlayerConfiguration, PlayerLoadout, RLBotPlayer, BoostOption,
 };
 
 /// Starting a match
@@ -30,11 +30,14 @@ pub fn start_match() -> MatchSettings {
         // mutatorSettings CANNOT be None, otherwise RLBot will crash
         mutatorSettings: Some(Box::new(MutatorSettings {
             matchLength: MatchLength::Unlimited,
+            boostOption: BoostOption::Unlimited_Boost,
             ..Default::default()
         })),
         existingMatchBehavior: ExistingMatchBehavior::Restart,
         enableRendering: true,
         instantStart: true,
+        enableStateSetting: true,
+        skipReplays: true,
         ..Default::default()
     }
 }
