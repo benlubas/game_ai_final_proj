@@ -19,21 +19,74 @@ impl Arena {
         };
     }
 
+    const GOALS: (Vector3, Vector3) = (
+        Vector3 {
+            x: 0.,
+            y: -5120.,
+            z: 321.,
+        },
+        Vector3 {
+            x: 0.,
+            y: 5120.,
+            z: 321.,
+        },
+    );
+
+    pub fn home_goal_pos(team: i32) -> Vector3 {
+        if team == 0 {
+            Arena::GOALS.0
+        } else {
+            Arena::GOALS.1
+        }
+    }
+
+    pub fn enemy_goal_pos(team: i32) -> Vector3 {
+        if team == 0 {
+            Arena::GOALS.1
+        } else {
+            Arena::GOALS.0
+        }
+    }
+
     /// Does this position collide with the wall or the ground? if it does, return the normal of
     /// the collision surface (roughly)
     pub fn collide(pos: &Vector3) -> Option<Vector3> {
         let vec = if pos.x > Arena::SIZE.x {
-            Vector3 { x: 1., y: 0., z: 0. }
+            Vector3 {
+                x: 1.,
+                y: 0.,
+                z: 0.,
+            }
         } else if pos.x < -Arena::SIZE.x {
-            Vector3 { x: -1., y: 0., z: 0. }
+            Vector3 {
+                x: -1.,
+                y: 0.,
+                z: 0.,
+            }
         } else if pos.z > Arena::SIZE.y {
-            Vector3 { x: 0., y: 0., z: -1. }
+            Vector3 {
+                x: 0.,
+                y: 0.,
+                z: -1.,
+            }
         } else if pos.z < 0. {
-            Vector3 { x: 0., y: 0., z: 1. }
+            Vector3 {
+                x: 0.,
+                y: 0.,
+                z: 1.,
+            }
         } else if pos.y > Arena::SIZE.y {
-            Vector3 { x: 0., y: -1., z: 0. }
+            Vector3 {
+                x: 0.,
+                y: -1.,
+                z: 0.,
+            }
         } else if pos.y < -Arena::SIZE.y {
-            Vector3 { x: 0., y: 1., z: 0. }
+            Vector3 {
+                x: 0.,
+                y: 1.,
+                z: 0.,
+            }
         } else {
             return None;
         };

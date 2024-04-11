@@ -1,14 +1,11 @@
 use std::f32::consts::PI;
 
 use rlbot_lib::rlbot::{
-    DesiredCarState, DesiredGameState, DesiredPhysics, Float, GameTickPacket, RotatorPartial,
+    DesiredCarState, DesiredGameState, DesiredPhysics, Float, GameTickPacket, RotatorPartial, PredictionSlice,
 };
 
 use rlbot_lib::rlbot::Vector3Partial;
 
-use crate::DEFAULT_CAR_ID;
-use crate::actions::drive_action::DriveAction;
-use crate::utils::math::math::vec_new;
 use crate::{
     actions::{action::Action, recover_action::RecoverAction},
     utils::arena::Arena,
@@ -22,15 +19,12 @@ pub struct TestStrategy {}
 impl Strategy for TestStrategy {
     fn choose_action(
         &self,
-        tick_packet: GameTickPacket,
+        _tick_packet: GameTickPacket,
+        _ball_predictions: &Vec<PredictionSlice>,
         _kickoff: bool,
     ) -> Option<Box<dyn Action>> {
-        let on_ground = tick_packet.players.unwrap().get(DEFAULT_CAR_ID).unwrap().hasWheelContact;
-        if on_ground {
-            Some(Box::new(DriveAction::new(vec_new(-40000., 0., 0.), 2300., true)))
-        } else {
-            Some(Box::new(RecoverAction::new(false)))
-        }
+        // let on_ground = tick_packet.players.unwrap().get(DEFAULT_CAR_ID).unwrap().hasWheelContact;
+        Some(Box::new(RecoverAction::new(false)))
     }
 
     fn set_game_state(&self) -> Option<DesiredGameState> {

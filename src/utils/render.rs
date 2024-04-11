@@ -18,7 +18,7 @@ pub mod render {
 
     pub fn text(pos: &Vector3, text: String, color: Color) -> RenderMessage {
         RenderMessage {
-            renderType: RenderType::DrawLine3D,
+            renderType: RenderType::DrawString2D,
             color: Some(Box::new(color)),
             start: Some(pos.clone()),
             end: None,

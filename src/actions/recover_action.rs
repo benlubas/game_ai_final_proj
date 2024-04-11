@@ -3,8 +3,8 @@ use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Physics, RenderMessage, 
 use crate::{
     utils::{
         arena::Arena,
-        math::math::{up_vec, Vec3},
-        ActionTickResult, render::render::{cross, YELLOW},
+        math::math::{up_vec, Vec3, vec_new, vec2_new},
+        ActionTickResult, render::render::{cross, YELLOW, text},
     },
     DEFAULT_CAR_ID,
 };
@@ -14,6 +14,8 @@ use super::{
     reorient_action::ReorientAction,
 };
 
+// NOTE: This is kinda awful, I think the coordinate system is messing with me again, but I don't
+// have time to figure it out
 pub struct RecoverAction {
     // track the progress of this action, b/c this is a timed uninterruptible action
     pub jump_when_upside_down: bool,
@@ -111,7 +113,11 @@ impl Action for RecoverAction {
                 ActionResult::InProgress(res) => {
                     action_result.controller = res.controller;
                 }
-                _ => {}
+                _ => {
+                    action_result.controller.roll = 0.;
+                    action_result.controller.pitch = 0.;
+                    action_result.controller.yaw = 0.;
+                }
             }
         }
 
@@ -134,16 +140,21 @@ impl Action for RecoverAction {
             return ActionResult::Success;
         }
 
-        println!("recov controller: {:?}", action_result.controller);
         ActionResult::InProgress(action_result)
     }
 
     fn render(&self) -> Vec<RenderMessage> {
-        if let Some(target) = self.landing_pos.as_ref() {
-            cross(target, 100., YELLOW)
+        let mut renders = if let Some(target) = self.landing_pos.as_ref() {
+            cross(&vec_new(target.x, target.y, target.z + 50.), 100., YELLOW)
         } else {
             vec![]
-        }
+        };
+
+        let more_text = if self.landing { "Landing" } else { "Pointing Down" };
+        let mut t = vec![text(&vec2_new(20., 50.), String::from(more_text), YELLOW)];
+
+        renders.append(&mut t);
+        renders
     }
 
     fn interruptible(&self) -> bool {

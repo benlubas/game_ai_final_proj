@@ -1,7 +1,7 @@
 use rlbot_lib::rlbot::{ControllerState, GameTickPacket, RenderMessage, Vector3};
 
 use crate::utils::{
-    math::math::{Rot3, Vec3},
+    math::math::{Rot3, Vec3, vec_new},
     ActionTickResult,
 };
 
@@ -23,6 +23,8 @@ impl ReorientAction {
     }
 }
 
+// NOTE: This is kinda awful, I think the coordinate system is messing with me again, but I don't
+// have time to figure it out
 impl Action for ReorientAction {
     fn step(
         &mut self,
@@ -35,22 +37,10 @@ impl Action for ReorientAction {
         let players = tick_packet.clone().players.clone().unwrap();
         let car = players.get(self.car_id).clone().unwrap();
         let car_phys = car.physics.clone().unwrap();
-        // let car_location = car_phys.location.clone().unwrap();
         let car_rotation = car_phys.rotation.clone().unwrap();
-        // let car_velocity = car_phys.velocity.clone().unwrap();
-        // let ball_location = tick_packet
-        //     .clone()
-        //     .ball
-        //     .unwrap()
-        //     .physics
-        //     .unwrap()
-        //     .location
-        //     .unwrap();
 
-        // Calculate the difference between some vectors and rotate the car so its
-        // wheels land on the surface. I'm ignoring the yaw of the car for now.
         let target_rot = nalgebra::Rotation3::face_towards(
-            &self.target_forward.to_nalg(),
+            &vec_new(self.target_forward.x, -self.target_forward.y, self.target_forward.z).to_nalg(),
             &self.target_up.to_nalg(),
         );
         let rot_to = target_rot.rotation_to(&car_rotation.to_nalg());

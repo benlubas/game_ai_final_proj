@@ -4,7 +4,7 @@
 /// This file should *not* contain any code that deals with the connection
 
 pub mod bot {
-    use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Physics, PlayerInput, RenderMessage};
+    use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Physics, PlayerInput, RenderMessage, PredictionSlice};
 
     use crate::actions::action::{Action, ActionResult};
     use crate::strategies::strategy::Strategy;
@@ -44,7 +44,7 @@ pub mod bot {
             }
         }
 
-        pub fn handle_game_tick(&mut self, packet: GameTickPacket) -> AgentTickResult {
+        pub fn handle_game_tick(&mut self, packet: GameTickPacket, ball_predictions: &Vec<PredictionSlice>) -> AgentTickResult {
             // Ignore the first 20 ticks
             if self.tick_count < 20 {
                 self.tick_count += 1;
@@ -98,7 +98,7 @@ pub mod bot {
             // choose maneuver
             if self.current_action.is_none() {
                 println!("Assigning new Action");
-                self.current_action = self.strategy.choose_action(packet.clone(), is_kickoff);
+                self.current_action = self.strategy.choose_action(packet.clone(), ball_predictions, is_kickoff);
                 if let Some(action) = &self.current_action {
                     println!("Choosen Action: {}", action.name());
                 }

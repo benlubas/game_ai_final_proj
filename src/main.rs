@@ -1,7 +1,7 @@
 use clap::Parser;
 use rlbot_lib::{
     self,
-    rlbot::{QuickChat, QuickChatSelection, ReadyMessage, RenderGroup},
+    rlbot::{QuickChat, QuickChatSelection, ReadyMessage, RenderGroup, PredictionSlice},
     Packet, RLBotConnection,
 };
 use std::env;
@@ -49,26 +49,23 @@ fn main() -> ! {
 
     println!("Creating Agent");
     let mut agent: Agent;
-    // if args.test {
-    //     agent = Agent::new(true, car_id, TestStrategy {});
-    // } else {
+    if args.test {
+        agent = Agent::new(true, car_id, TestStrategy {});
+    } else {
         agent = Agent::new(true, car_id, SoloStrategy {});
-    // }
+    }
 
-    // // setup the game according to the strategy
-    // if let Some(state) = agent.strategy.set_game_state() {
-    //     rlbot_connection
-    //         .send_packet(Packet::DesiredGameState(state))
-    //         .unwrap();
-    // }
+    let mut count = 0;
+    let mut latest_predictions: Vec<PredictionSlice> = vec![];
     loop {
         match rlbot_connection.recv_packet() {
             Ok(received_packet) => {
                 match received_packet {
                     Packet::GameTickPacket(packet) => {
-                        let res = agent.handle_game_tick(packet);
-                        println!("{:?}", res.input);
-                        println!("{:?}", res.render);
+                        count += 1;
+                        let res = agent.handle_game_tick(packet, &latest_predictions);
+                        // println!("{:?}", res.input);
+                        // println!("{:?}", res.render);
                         rlbot_connection
                             .send_packet(Packet::PlayerInput(res.input))
                             .unwrap();
@@ -78,6 +75,15 @@ fn main() -> ! {
                                 id: 456, // NOTE: ~~I might need to make these unique.~~ I don't
                             }))
                             .unwrap();
+
+                        // launch the car every 4 seconds
+                        if count % (240 * 4) == 0 {
+                            if let Some(state) = agent.strategy.set_game_state() {
+                                rlbot_connection
+                                    .send_packet(Packet::DesiredGameState(state))
+                                    .unwrap();
+                            }
+                        }
                     }
                     Packet::QuickChat(packet) => {
                         if packet.quickChatSelection == QuickChatSelection::Compliments_WhatASave {
@@ -88,8 +94,8 @@ fn main() -> ! {
                             }));
                         }
                     }
-                    Packet::BallPrediction(_packet) => {
-                        // println!("Ball Prediction Packet:\n{packet:?}");
+                    Packet::BallPrediction(packet) => {
+                        latest_predictions = packet.slices.unwrap();
                     }
                     // Packet::ReadyMessage(_) => todo!(),
                     // Packet::MessagePacket(packet) => {

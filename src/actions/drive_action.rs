@@ -91,7 +91,7 @@ impl Action for DriveAction {
         // println!("{forward_vel:?}");
         // # speed controller
         if forward_vel < self.target_speed {
-            println!("moving slower than target speed");
+            // println!("moving slower than target speed");
             controller.throttle = 1.0;
             if self.target_speed > 1400.0
                 && forward_vel < 2250.0
@@ -102,7 +102,7 @@ impl Action for DriveAction {
                 controller.boost = false;
             }
         } else {
-            println!("moving faster than target speed");
+            // println!("moving faster than target speed");
             if (forward_vel - self.target_speed) > 400.0 {
                 // tap break if we're moving too much faster than the target speed
                 controller.throttle = -1.0;

@@ -12,6 +12,16 @@ pub mod math {
         Vector3 { x, y, z: 0. }
     }
 
+    pub fn clamp(n: f32, lower_limit: f32, upper_limit: f32) -> f32 {
+        if n > upper_limit {
+            upper_limit
+        } else if n < lower_limit {
+            lower_limit
+        } else {
+            n
+        }
+    }
+
     pub fn abs_clamp(n: f32, limit: f32) -> f32 {
         if n.abs() > limit {
             return limit * n.signum();
@@ -95,12 +105,15 @@ pub mod math {
         fn dot(&self, v: &Vector3) -> f32;
         fn cross(&self, v: &Vector3) -> Vector3;
         fn dist(&self, v: &Vector3) -> f32;
-        fn ground(self) -> Vector3;
+        fn ground_dist(&self, v: &Vector3) -> f32;
+        fn ground(&self) -> Vector3;
         fn sub(&self, v: &Vector3) -> Vector3;
         fn add(&self, v: &Vector3) -> Vector3;
         fn scale(&self, s: f32) -> Vector3;
         fn normalize(&self) -> Vector3;
         fn norm(&self) -> f32;
+        fn angle_between(&self, v: &Vector3) -> f32;
+        fn direction(&self, v: &Vector3) -> Vector3;
         fn x(&self) -> f32;
         fn y(&self) -> f32;
         fn z(&self) -> f32;
@@ -133,8 +146,8 @@ pub mod math {
         }
 
         /// Zero the z component of the vector
-        fn ground(self) -> Vector3 {
-            Vector3 { z: 0., ..self }
+        fn ground(&self) -> Vector3 {
+            Vector3 { z: 0., x: self.x, y: self.y }
         }
 
         /// Operator overloading on a trait is a royal pain in the ass. Thanks rust
@@ -206,6 +219,18 @@ pub mod math {
                 y: 0.,
                 z: 1.,
             }
+        }
+
+        fn angle_between(&self, v: &Vector3) -> f32 {
+            (self.dot(v) / (self.norm() * v.norm())).acos()
+        }
+
+        fn direction(&self, target: &Vector3) -> Vector3 {
+            target.sub(self).normalize()
+        }
+
+        fn ground_dist(&self, v: &Vector3) -> f32 {
+            self.ground().dist(&v.ground())
         }
     }
 

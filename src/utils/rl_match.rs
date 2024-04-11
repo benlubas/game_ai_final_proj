@@ -37,7 +37,7 @@ pub fn start_match() -> MatchSettings {
         enableRendering: true,
         instantStart: true,
         enableStateSetting: true,
-        skipReplays: true,
+        // skipReplays: true,
         ..Default::default()
     }
 }

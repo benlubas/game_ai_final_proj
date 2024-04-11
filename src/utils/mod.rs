@@ -4,6 +4,8 @@ pub mod rl_match;
 pub mod arena;
 pub mod math;
 pub mod render;
+pub mod intercept;
+pub mod boost;
 
 pub struct ActionTickResult {
     pub controller: ControllerState,
