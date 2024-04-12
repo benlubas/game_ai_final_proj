@@ -8,9 +8,10 @@ pub mod recover_action;
 pub mod reorient_action;
 pub mod drive_shot_action;
 pub mod goto_action;
+pub mod strike;
 
 pub mod action {
-    use rlbot_lib::rlbot::{ControllerState, GameTickPacket, RenderMessage};
+    use rlbot_lib::rlbot::{ControllerState, GameTickPacket, RenderMessage, PredictionSlice};
 
     use crate::utils::ActionTickResult;
 
@@ -25,6 +26,7 @@ pub mod action {
             &mut self,
             tick_packet: GameTickPacket,
             controller: ControllerState,
+            predictions: &Vec<PredictionSlice>,
             dt: f32,
         ) -> ActionResult;
         fn render(&self) -> Vec<RenderMessage>;

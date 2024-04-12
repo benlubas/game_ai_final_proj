@@ -1,4 +1,4 @@
-use rlbot_lib::rlbot::{GameTickPacket, ControllerState, RenderMessage};
+use rlbot_lib::rlbot::{GameTickPacket, ControllerState, RenderMessage, PredictionSlice};
 
 use crate::utils::ActionTickResult;
 
@@ -21,7 +21,7 @@ impl JumpAction {
 }
 
 impl Action for JumpAction {
-    fn step(&mut self, _tick_packet: GameTickPacket, controller: ControllerState, dt: f32) -> super::action::ActionResult {
+    fn step(&mut self, _tick_packet: GameTickPacket, controller: ControllerState, predictions: &Vec<PredictionSlice>, dt: f32) -> super::action::ActionResult {
         let jump = self.timer < self.duration;
         if !jump {
             self.counter += 1;

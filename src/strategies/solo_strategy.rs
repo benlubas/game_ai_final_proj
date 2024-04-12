@@ -40,21 +40,27 @@ impl Strategy for SoloStrategy {
         // For now, we're just always driving at the ball.
         let ball_location = ball.physics.unwrap().location.unwrap();
 
-        let action: Box<dyn Action>;
-        if kickoff {
-            action = Box::new(BasicKickoffAction::new());
-        } else {
-            action = Box::new(DriveAction {
-                target_pos: ball_location,
-                target_speed: 1300.0,
-                drive_on_walls: false,
-            });
-        }
+        let my_intercept = Intercept::new(
+            car,
+            game_time,
+            ball_predictions,
+            *ball_phys.clone(),
+            false,
+            false,
+        );
 
-        let my_intercept = Intercept::new(car, game_time, ball_predictions, *ball_phys.clone(), false);
         let their_intercept = opponents
             .into_iter()
-            .map(|opp_car| Intercept::new(&opp_car, game_time, ball_predictions, *ball_phys.clone(), false))
+            .map(|opp_car| {
+                Intercept::new(
+                    &opp_car,
+                    game_time,
+                    ball_predictions,
+                    *ball_phys.clone(),
+                    false,
+                    false,
+                )
+            })
             .min_by(|a, b| {
                 a.time
                     .partial_cmp(&b.time)
@@ -62,9 +68,9 @@ impl Strategy for SoloStrategy {
             });
 
         // we might have no opponent if they're demoed or leave the game, don't want to crash
-        let mut opponent: Option<PlayerInfo> = None;
+        let mut _opponent: Option<PlayerInfo> = None;
         if let Some(op) = their_intercept {
-            opponent = Some(op.car);
+            _opponent = Some(op.car);
         }
 
         let pads = BoostPad::extract_info(&tick_packet.clone());
@@ -79,25 +85,45 @@ impl Strategy for SoloStrategy {
             .collect();
         let best_boost = choose_boostpad(&tick_packet.clone(), car.clone(), &my_goal, bad_pads);
 
-        // # if ball is in a dangerous position, clear it
-        // if (
-        //         ground_distance(my_intercept, my_goal) < 3000
-        //         and (abs(my_intercept.position[0]) < 2000 or abs(my_intercept.position[1]) < 4500)
-        //         and my_car.position[2] < 300
-        // ):
+        let mut action: Box<dyn Action>;
+        if kickoff {
+            return Some(Box::new(BasicKickoffAction::new()));
+        } else if my_intercept.is_viable {
+            // default drive to intercept the ball
+            action = Box::new(DriveAction::new(
+                my_intercept.location.clone(),
+                2300.,
+                false,
+                false,
+            ))
+        } else {
+            action = Box::new(DriveAction::new(ball_location.clone(), 2300., false, true))
+        }
+
+        // if ball is close to our net, clear it
         if my_intercept.location.ground().dist(&my_goal.ground()) < 3000.
             && my_intercept.location.x.abs() < 2000.
             || my_intercept.location.y.abs() < 4500. && car_location.z < 300.
         {
-            todo!("Shoot the ball/clear the ball");
+            // clear the ball (with a shot currently, this can be improved by determining the best
+            // spot to clear based on the opponent location, I just ran out of time).
+            if car_location.dist(&my_goal) > 2000. {
+                // TODO: change this to goto with an angle towards the ball, maybe also goto
+                // backpost or something.
+                action = Box::new(DriveAction::new(my_goal.clone(), 2300., false, true));
+            } else {
+                // NOTE: drive shot action is very broken, needs a bunch of debugging/testing.
+                // I wrote it in one shot without testing b/c i was running out of time.
+                // action = Box::new(DriveShotAction::new(DEFAULT_CAR_ID, their_goal.clone()));
+                action = Box::new(DriveAction::new(ball_location.clone(), 2300., false, false));
+            }
         }
-        //     if align(my_car.position, my_intercept.ball, their_goal) > 0.5:
-        //         return offense.any_shot(info, my_intercept.car, their_goal, my_intercept, allow_dribble=True)
-        //     return defense.any_clear(info, my_intercept.car)
-        //
-        // # if I'm low on boost and the ball is not near my goal, go for boost
-        // if my_car.boost < 10 and ground_distance(my_intercept, their_goal) > 3000 and best_boostpad_to_pickup is not None:
-        //     return PickupBoostPad(my_car, best_boostpad_to_pickup)
+        // low and boost and ball isn't dangerous, so grab boost
+        if let Some(boost_target) = best_boost {
+            if car.boost < 30 && my_intercept.location.ground_dist(&their_goal) > 3000. {
+                action = Box::new(DriveAction::new(boost_target.location, 2300., false, false))
+            }
+        }
 
         Some(action)
     }

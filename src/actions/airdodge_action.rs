@@ -1,4 +1,4 @@
-use rlbot_lib::rlbot::{ControllerState, GameTickPacket, RenderMessage, Vector3};
+use rlbot_lib::rlbot::{ControllerState, GameTickPacket, RenderMessage, Vector3, PredictionSlice};
 
 use crate::{
     utils::{
@@ -44,6 +44,7 @@ impl Action for AirDodgeAction {
         &mut self,
         tick_packet: GameTickPacket,
         controller: ControllerState,
+        predictions: &Vec<PredictionSlice>,
         dt: f32,
     ) -> ActionResult {
         let car = tick_packet
@@ -65,7 +66,7 @@ impl Action for AirDodgeAction {
 
         let mut controller = controller.clone();
         if !self.jump_finished {
-            match self.jump.step(tick_packet.clone(), controller.clone(), dt) {
+            match self.jump.step(tick_packet.clone(), controller.clone(), predictions, dt) {
                 ActionResult::InProgress(ctrl) => {
                     controller = ctrl.controller;
                 }
@@ -95,7 +96,8 @@ impl Action for AirDodgeAction {
                     controller.boost = false;
 
                     // NOTE: this line is probably horribly wrong
-                    controller.yaw = (to_target.x / to_target.y).atan();
+                    // controller.yaw = (to_target.x / to_target.y).atan();
+                    controller.yaw = 0.;
                     println!("yaw: {}", controller.yaw);
                     // self.controls.yaw = clamp11(sgn(self.car.orientation[2, 2]) * target_direction[1])
 

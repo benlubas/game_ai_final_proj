@@ -1,4 +1,4 @@
-use rlbot_lib::rlbot::Vector3;
+use rlbot_lib::rlbot::{PredictionSlice, Vector3};
 
 use crate::utils::{
     intercept::turn_radius,
@@ -10,20 +10,21 @@ use super::{
     drive_action::DriveAction,
 };
 
+#[derive(Clone)]
 pub struct GotoAction {
-    drive: DriveAction,
-    target: Vector3,
-    target_direction: Option<Vector3>,
+    pub drive: DriveAction,
+    pub target: Vector3,
+    pub target_direction: Option<Vector3>,
     car_id: usize,
-    arrival_time: f32,
-    additional_shift: f32,
+    pub arrival_time: f32,
+    pub additional_shift: f32,
     lerp_t: f32,
 }
 
 impl GotoAction {
     pub fn new(target: Vector3, target_direction: Option<Vector3>, car_id: usize) -> GotoAction {
         GotoAction {
-            drive: DriveAction::new(target.clone(), 0., false),
+            drive: DriveAction::new(target.clone(), 0., false, true),
             target,
             target_direction,
             car_id,
@@ -39,6 +40,7 @@ impl Action for GotoAction {
         &mut self,
         tick_packet: rlbot_lib::rlbot::GameTickPacket,
         controller: rlbot_lib::rlbot::ControllerState,
+        predictions: &Vec<PredictionSlice>,
         dt: f32,
     ) -> ActionResult {
         let car = tick_packet
@@ -96,7 +98,7 @@ impl Action for GotoAction {
         }
         self.drive.target_speed = target_speed;
 
-        self.drive.step(tick_packet, controller, dt)
+        self.drive.step(tick_packet, controller, predictions, dt)
     }
 
     fn render(&self) -> Vec<rlbot_lib::rlbot::RenderMessage> {

@@ -1,6 +1,7 @@
 use rlbot_lib::rlbot::{
-    ExistingMatchBehavior, GameMap, GameMode, MatchLength, MatchSettings, MutatorSettings,
-    PlayerClass, PlayerConfiguration, PlayerLoadout, RLBotPlayer, BoostOption,
+    BoostOption, ExistingMatchBehavior, GameMap, GameMode, MatchLength, MatchSettings,
+    MutatorSettings, PlayerClass, PlayerConfiguration, PlayerLoadout, PsyonixBotPlayer,
+    RLBotPlayer,
 };
 
 /// Starting a match
@@ -15,9 +16,11 @@ pub fn start_match() -> MatchSettings {
                 spawnId: 0,
             },
             PlayerConfiguration {
-                variety: PlayerClass::RLBotPlayer(Box::new(RLBotPlayer {})),
+                // variety: PlayerClass::RLBotPlayer(Box::new(RLBotPlayer {})),
+
                 // I'm not sure how to get it to automatically spawn me in
                 // variety: PlayerClass::HumanPlayer(Box::new(HumanPlayer { _tab: 0 })),
+                variety: PlayerClass::PsyonixBotPlayer(Box::new(PsyonixBotPlayer { botSkill: 0. })),
                 name: Some("BOT2".to_owned()),
                 team: 1,
                 loadout: Some(Box::new(PlayerLoadout::default())),

@@ -1,13 +1,19 @@
 use rlbot_lib::rlbot::{Physics, PlayerInfo, PredictionSlice, Vector3};
 
-use super::math::math::{forward_vec, Vec3};
+use super::{
+    arena::Arena,
+    math::math::{forward_vec, Vec3},
+};
 
+#[derive(Clone)]
 pub struct Intercept {
     pub ball: Physics,
     pub car: PlayerInfo,
     pub is_viable: bool,
     pub time: f32,
     pub location: Vector3,
+    use_predicate: bool,
+    pub predicate_later_than_time: bool,
 }
 
 impl Intercept {
@@ -17,34 +23,38 @@ impl Intercept {
         ball_predictions: &Vec<PredictionSlice>,
         ball: Physics,
         ignore_time_estimate: bool,
+        use_predicate: bool,
     ) -> Intercept {
         let mut the_ball: Option<Physics> = None;
-        let mut location: Option<Vector3> = None;
         let mut is_viable = true;
         let mut time = f32::MAX;
+        let mut predicate_later_than_time = false;
         for ball in ball_predictions.clone() {
             let ball_phys = ball.physics.unwrap();
             let ball_location = ball_phys.location.clone().unwrap();
             time = estimate_time(car, ball_location);
 
             if time < ball.gameSeconds - game_time || ignore_time_estimate {
-                the_ball = Some(*ball_phys.clone());
-                location = Some(ball_phys.location.unwrap());
-                break;
+                if !use_predicate || predicate(car.clone(), *ball_phys.clone()) {
+                    the_ball = Some(*ball_phys.clone());
+                    break;
+                }
+                predicate_later_than_time = true;
+            } else {
+                predicate_later_than_time = false;
             }
         }
         if the_ball.is_none() {
             if ball_predictions.len() > 0 {
                 if let Some(last) = ball_predictions.last() {
                     the_ball = Some(*last.physics.clone().unwrap());
-                    location = Some(last.physics.clone().unwrap().location.unwrap());
                 } else {
-                    the_ball = Some(ball);
-                    location = ball.location
+                    the_ball = Some(ball.clone());
                 }
             }
             is_viable = false;
         }
+        let location = Some(the_ball.clone().unwrap().location.unwrap());
 
         Intercept {
             ball: the_ball.unwrap(),
@@ -52,6 +62,8 @@ impl Intercept {
             is_viable,
             time,
             location: location.unwrap(),
+            use_predicate,
+            predicate_later_than_time,
         }
     }
 }
@@ -131,4 +143,16 @@ pub fn estimate_time(car: &PlayerInfo, target: Vector3) -> f32 {
         time += dist / speed;
     }
     time * 1.05 + turning
+}
+
+// HACK: I'm just passing a boolean to avoid having to pass this function around b/c I can't clone
+// it and I don't have time to figure out how to do that. Rust is hard
+fn predicate(_car: PlayerInfo, ball: Physics) -> bool {
+    let ball_loc = ball.location.clone().unwrap();
+    if ball_loc.z > 200. || ball_loc.y.abs() > Arena::SIZE.y - 100. {
+        false
+    } else {
+        // Note: this might be too simplistic to work I'm not sure.
+        true
+    }
 }

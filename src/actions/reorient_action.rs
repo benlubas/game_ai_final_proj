@@ -1,7 +1,7 @@
-use rlbot_lib::rlbot::{ControllerState, GameTickPacket, RenderMessage, Vector3};
+use rlbot_lib::rlbot::{ControllerState, GameTickPacket, PredictionSlice, RenderMessage, Vector3};
 
 use crate::utils::{
-    math::math::{Rot3, Vec3, vec_new},
+    math::math::{vec_new, Rot3, Vec3},
     ActionTickResult,
 };
 
@@ -30,6 +30,7 @@ impl Action for ReorientAction {
         &mut self,
         tick_packet: GameTickPacket,
         controller: ControllerState,
+        predictions: &Vec<PredictionSlice>,
         _dt: f32,
     ) -> ActionResult {
         let controller = controller.clone();
@@ -40,7 +41,12 @@ impl Action for ReorientAction {
         let car_rotation = car_phys.rotation.clone().unwrap();
 
         let target_rot = nalgebra::Rotation3::face_towards(
-            &vec_new(self.target_forward.x, -self.target_forward.y, self.target_forward.z).to_nalg(),
+            &vec_new(
+                self.target_forward.x,
+                -self.target_forward.y,
+                self.target_forward.z,
+            )
+            .to_nalg(),
             &self.target_up.to_nalg(),
         );
         let rot_to = target_rot.rotation_to(&car_rotation.to_nalg());

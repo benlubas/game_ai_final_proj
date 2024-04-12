@@ -1,4 +1,4 @@
-use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Physics, RenderMessage, Vector3};
+use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Physics, RenderMessage, Vector3, PredictionSlice};
 
 use crate::{
     utils::{
@@ -97,6 +97,7 @@ impl Action for RecoverAction {
         &mut self,
         tick_packet: GameTickPacket,
         controller: ControllerState,
+ predictions: &Vec<PredictionSlice>,
         dt: f32,
     ) -> ActionResult {
         let mut action_result = ActionTickResult::from(controller.clone());
@@ -109,7 +110,7 @@ impl Action for RecoverAction {
 
         self.simulate_landing(*car_phys.clone());
         if let Some(reorient) = self.reorient.as_mut() {
-            match reorient.step(tick_packet.clone(), controller.clone(), dt) {
+            match reorient.step(tick_packet.clone(), controller.clone(), predictions, dt) {
                 ActionResult::InProgress(res) => {
                     action_result.controller = res.controller;
                 }

@@ -4,7 +4,9 @@
 /// This file should *not* contain any code that deals with the connection
 
 pub mod bot {
-    use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Physics, PlayerInput, RenderMessage, PredictionSlice};
+    use rlbot_lib::rlbot::{
+        ControllerState, GameTickPacket, Physics, PlayerInput, PredictionSlice, RenderMessage,
+    };
 
     use crate::actions::action::{Action, ActionResult};
     use crate::strategies::strategy::Strategy;
@@ -25,6 +27,8 @@ pub mod bot {
         last_tick_time: f32,
         /// Whatever the bot is currently trying to do
         current_action: Option<Box<dyn Action>>,
+        /// how long we've been trying to do the same thing
+        action_timer: f32,
         pub strategy: Box<dyn Strategy>,
         current_controller: ControllerState,
     }
@@ -39,12 +43,17 @@ pub mod bot {
                 tick_count: 0,
                 last_tick_time: 0.,
                 current_action: None,
+                action_timer: 0.,
                 strategy: Box::new(strategy),
                 current_controller: ControllerState::default(),
             }
         }
 
-        pub fn handle_game_tick(&mut self, packet: GameTickPacket, ball_predictions: &Vec<PredictionSlice>) -> AgentTickResult {
+        pub fn handle_game_tick(
+            &mut self,
+            packet: GameTickPacket,
+            ball_predictions: &Vec<PredictionSlice>,
+        ) -> AgentTickResult {
             // Ignore the first 20 ticks
             if self.tick_count < 20 {
                 self.tick_count += 1;
@@ -63,6 +72,7 @@ pub mod bot {
             let car_phys = car.physics.clone().unwrap();
             let seconds_elapsed = packet.gameInfo.clone().unwrap().secondsElapsed;
             let dt = seconds_elapsed - self.last_tick_time;
+            self.action_timer += dt;
             self.last_tick_time = seconds_elapsed;
             let is_kickoff = packet.gameInfo.clone().unwrap().isKickoffPause;
             // cancel current_action if a kickoff is happening and current_action isn't a kickoff
@@ -70,10 +80,16 @@ pub mod bot {
                 if is_kickoff && !action.kickoff() {
                     println!("Clearing for kickoff");
                     self.current_action = None;
+                    self.action_timer = 0.;
+                } else if self.action_timer > 2. && action.interruptible() {
+                    // HACK: stale actions are really just a band-aid for other problems
+                    println!("Stale action");
+                    self.current_action = None;
+                    self.action_timer = 0.;
                 }
             }
 
-            // reset maneuver when another car hits the ball
+            // reset action when another car hits the ball
             if let Some(touch) = ball.latestTouch.clone() {
                 if let Some(last_touch) = self.last_touch_time {
                     if touch.gameSeconds > last_touch
@@ -89,16 +105,19 @@ pub mod bot {
                         if let Some(action) = &self.current_action {
                             if action.interruptible() {
                                 self.current_action = None;
+                                self.action_timer = 0.;
                             }
                         }
                     }
                 }
             }
 
-            // choose maneuver
+            // choose action
             if self.current_action.is_none() {
                 println!("Assigning new Action");
-                self.current_action = self.strategy.choose_action(packet.clone(), ball_predictions, is_kickoff);
+                self.current_action =
+                    self.strategy
+                        .choose_action(packet.clone(), ball_predictions, is_kickoff);
                 if let Some(action) = &self.current_action {
                     println!("Choosen Action: {}", action.name());
                 }
@@ -116,7 +135,7 @@ pub mod bot {
 
             if let Some(action) = self.current_action.as_mut() {
                 if let ActionResult::InProgress(mut res) =
-                    action.step(packet.clone(), controller.clone(), dt)
+                    action.step(packet.clone(), controller.clone(), ball_predictions, dt)
                 {
                     controller = res.controller;
                     renders.append(&mut res.render);
@@ -127,6 +146,7 @@ pub mod bot {
                     }
                 } else {
                     self.current_action = None;
+                    self.action_timer = 0.;
                 }
             }
 

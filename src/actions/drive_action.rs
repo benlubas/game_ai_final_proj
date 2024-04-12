@@ -1,33 +1,55 @@
-use rlbot_lib::rlbot::{ControllerState, GameTickPacket, Vector3, RenderMessage};
+use rlbot_lib::rlbot::{ControllerState, GameTickPacket, PredictionSlice, RenderMessage, Vector3};
 
-use crate::{utils::{
-    arena::Arena,
-    math::math::{abs_clamp, forward_vec, up_vec, Vec3}, ActionTickResult,
-}, DEFAULT_CAR_ID};
+use crate::{
+    utils::{
+        arena::Arena,
+        math::math::{abs_clamp, forward_vec, up_vec, Vec3},
+        render::render::{cross, RED},
+        ActionTickResult,
+    },
+    DEFAULT_CAR_ID,
+};
 
 use super::action::{Action, ActionResult};
 
+#[derive(Clone)]
 pub struct DriveAction {
     // track the progress of this action, b/c this is a timed uninterruptible action
     pub target_pos: Vector3,
     pub target_speed: f32,
-    // backwards: bool, // I'm just going to leave this out for now
     pub drive_on_walls: bool,
+    pub slow_on_approach: bool,
+    starting_dist: Option<f32>,
+    powerslide_counter: i32,
 }
 
 impl DriveAction {
-    pub fn new(target_pos: Vector3, target_speed: f32, drive_on_walls: bool) -> DriveAction {
+    pub fn new(
+        target_pos: Vector3,
+        target_speed: f32,
+        drive_on_walls: bool,
+        slow_on_approach: bool,
+    ) -> DriveAction {
         DriveAction {
             target_pos,
             target_speed,
             drive_on_walls,
+            slow_on_approach,
+            starting_dist: None,
+            powerslide_counter: 0,
         }
     }
 }
 
 // This is blocked on basic drive and flip actions
 impl Action for DriveAction {
-    fn step(&mut self, tick_packet: GameTickPacket, controller: ControllerState, _dt: f32) -> ActionResult {
+    fn step(
+        &mut self,
+        tick_packet: GameTickPacket,
+        controller: ControllerState,
+        _predictions: &Vec<PredictionSlice>,
+        _dt: f32,
+    ) -> ActionResult {
         let car = tick_packet
             .clone()
             .players
@@ -40,6 +62,15 @@ impl Action for DriveAction {
         let car_location = car.location.clone().unwrap();
         let rotation = car.rotation.clone().unwrap();
         let velocity = car.velocity.clone().unwrap();
+
+        if self.starting_dist.is_none() {
+            self.starting_dist = Some(car_location.ground_dist(&self.target_pos));
+        }
+
+        // slow down as we start approaching the target
+        if self.slow_on_approach && car_location.ground_dist(&self.target_pos) < 1000. {
+            self.target_speed = self.target_speed.min(500.);
+        }
 
         // don't try driving outside the arena
         let mut target = Arena::clamp(&self.target_pos, 100.);
@@ -62,7 +93,6 @@ impl Action for DriveAction {
             }
         }
 
-        // let local_target = target.local(&location, car.rotation.unwrap());
         // NOTE: This is a place we'd normally want some type of logic for driving backwards
         let bot_to_target_angle =
             (self.target_pos.y - car_location.y).atan2(target.x - car_location.x);
@@ -73,15 +103,18 @@ impl Action for DriveAction {
         controller.steer = abs_clamp(2.5 * bot_front_to_target_angle, 1.);
         controller.throttle = 1.;
 
-        // TODO: powerslide code
-        // self.controls.handbrake = 0
-        // if (
-        //         abs(phi) > 1.5
-        //         and self.car.position[2] < 300
-        //         and (ground_distance(self.car, target) < 3500 or abs(self.car.position[0]) > 3500)
-        //         and dot(normalize(self.car.velocity), self.car.forward()) > 0.85
-        // ):
-        //     self.controls.handbrake = 1
+        // powerslide code
+        // powerslide if facing away from ball and tap it, so we don't spin out
+        if bot_front_to_target_angle.abs() > 0.9 {
+            if self.powerslide_counter > 0 {
+                self.powerslide_counter -= 1;
+            } else {
+                controller.handbrake = true;
+                self.powerslide_counter = 100;
+            }
+        } else {
+            controller.handbrake = false;
+        }
 
         // Speed controller
 
@@ -123,15 +156,24 @@ impl Action for DriveAction {
             controller.boost = false;
         }
 
-        if self.target_pos.dist(&car_location) < 100. {
+        if self.target_pos.ground_dist(&car_location) < 150. {
+            println!("Drive Success");
             return ActionResult::Success;
+        }
+
+        // fail if we're significantly further from the ball when we were when we started
+        if let Some(d) = self.starting_dist {
+            if self.target_pos.ground_dist(&car_location) > d + 400. {
+                println!("failed drive");
+                return ActionResult::Failed;
+            }
         }
 
         return ActionResult::InProgress(ActionTickResult::from(controller));
     }
 
     fn render(&self) -> Vec<RenderMessage> {
-        vec![]
+        cross(&self.target_pos, 100., RED)
     }
 
     fn interruptible(&self) -> bool {
@@ -143,6 +185,10 @@ impl Action for DriveAction {
     }
 
     fn name(&self) -> String {
-        String::from("DriveAction")
+        if self.target_speed <= 501. {
+            String::from("DriveAction (approach)")
+        } else {
+            String::from("DriveAction")
+        }
     }
 }
